@@ -1,9 +1,15 @@
 # -*- coding: utf-8 -*-
+from email import message
+from genericpath import exists
+from operator import contains
+from turtle import update
+from matplotlib.style import context
 import telegram
 from telegram.ext import Updater, CallbackContext, CommandHandler, MessageHandler, Filters
 from telegram import Contact, MessageId, Update
 import logging
-import mysql.connector
+import sqlite3
+        
 
 # inicialização
 updater = Updater(token="5180663220:AAGRZL-gErS01fkfIU0zoRmlCQxaoFLMvV4")
@@ -34,7 +40,7 @@ def start(update: Update, context: CallbackContext):
         custom = [[botao]]
         reply_markup = telegram.ReplyKeyboardMarkup(custom)
         context.bot.send_message(chat_id=update.effective_chat.id, text="""
-        Ola! Aqui é o robô da TireShop.
+        Ola! Aqui é o robô do Telegram.
         Envie seu contato para podemos prosseguir:
         """,reply_markup=reply_markup)  
         
@@ -73,32 +79,31 @@ def mandar_opcoes(update: Update, context: CallbackContext):
 # Salvar informações no banco
 
 def salvar():
-        #MUDAR HOST E PASSWORD
-        banco = mysql.connector.connect(host='',database='saw_teste',user='root',password='')
-        cursor = banco.cursor(buffered=True)
+
+        banco = sqlite3.connect('banco.db')
+        cursor = banco.cursor()
         # cursor.execute("CREATE TABLE users (id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, numero text, first_name text, last_name text)")
         print(f' dentro do salvar -> {numero}')
-        busca_numeros = cursor.execute("SELECT numero FROM teste_telegram")
-        print(busca_numeros)
-        numeros = cursor.fetchall()
-        print(numeros, busca_numeros)
+        busca_numeros = cursor.execute("SELECT numero FROM users")
+        
+        numeros = busca_numeros.fetchall()
 
         if len(numero) > 0:
                 global opcoes_handler
                 opcoes_handler = MessageHandler(Filters.text, opcoes)
                 dispatcher.add_handler(opcoes_handler)
                 dispatcher.remove_handler(tente_novamente_handler)
-        print(numero)
+        print(f' AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA do salvar -> {numero}')
+
         for i in numeros:
-                if str(i[0])==numero:
-                        print('IGUAL')
+                if i[0] == numero:
                         return False
 
 
         if last_name != None:
-                cursor.execute(f"INSERT INTO teste_telegram (numero,first_name,last_name) VALUES('{numero}','{first_name}','{last_name}')")
+                cursor.execute("INSERT INTO users VALUES(NULL, '"+ numero + "','"+ first_name + "','"+ last_name +  "')")
         else:
-                cursor.execute(f"INSERT INTO teste_telegram (numero,first_name,last_name) VALUES('{numero}','{first_name}','VAZIO')")
+                cursor.execute("INSERT INTO users VALUES(NULL, '"+ numero + "','"+ first_name + "','"+ 'VAZIO' +  "')")
 
 
         banco.commit()
@@ -131,8 +136,11 @@ def tente_novamente(update: Update, context: CallbackContext):
         context.bot.send_photo(chat_id=update.effective_chat.id, photo=open('files/icone_contato.png', 'rb'))
         
 
+
+
 tente_novamente_handler = MessageHandler(Filters.text, tente_novamente)
 dispatcher.add_handler(tente_novamente_handler)
+
 
 mandar_opcoes_handler = MessageHandler(Filters.contact, mandar_opcoes)
 dispatcher.add_handler(mandar_opcoes_handler)
