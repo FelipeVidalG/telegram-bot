@@ -49,24 +49,34 @@ def mandar_opcoes(update: Update, context: CallbackContext):
         # chat_id=update.effective_chat.id -> localização da mensagem (os chats com updates)
         # update.message.text --> ultimo mensagem do chat 
         # dispatcher.remove_handler(start_handler)
-        banco = mysql.connector.connect(host='192.168.10.82',database='saw_teste',user='root',password='rapadura')
+        banco = mysql.connector.connect(host='',database='saw_teste',user='root',password='')
         cursor = banco.cursor(buffered=True)
         busca_opcoes = cursor.execute("SELECT * FROM menu_telegram")
         opcoes = cursor.fetchall()
-        print(opcoes)
-        menu_id = []
-        menu_desc = []
-        menu = f"""
-        Digite um dos números abaixo para escolher uma das opções
-        {opcoes[0][0]} {opcoes[0][3]}
-       {opcoes[1][0]} {opcoes[1][3]}
-        {opcoes[2][0]}  {opcoes[2][3]}
-        {opcoes[3][0]}  {opcoes[3][3]}
-        """
+        menu_for = []
+        text = "Digite um dos números abaixo para escolher uma das opções"
+        for i in opcoes:
+                menu_id = str(i[0])
+
+                menu_desc =  str(i[3])
                 
+                menu_for = str(menu_for) + f"""\n{menu_desc}"""
+
+        simbolos = ["[", "]"]
+        for c in simbolos:
+                menu_for = menu_for.replace(c,'')
+
+        menu = f"""Digite um dos números abaixo para escolher uma das opções:
+                {menu_for}"""  
+#         menu = f"""
+#         Digite um dos números abaixo para escolher uma das opções
+#         {opcoes[0][0]} {opcoes[0][3]}
+#        {opcoes[1][0]} {opcoes[1][3]}
+#         {opcoes[2][0]}  {opcoes[2][3]}
+#         {opcoes[3][0]}  {opcoes[3][3]}
+#         """
       
 
-                
 
         reply_markup = telegram.ReplyKeyboardRemove(custom)
         context.bot.send_message(chat_id=update.effective_chat.id, text=menu, reply_markup=reply_markup)
@@ -99,7 +109,6 @@ def salvar():
                 dispatcher.remove_handler(tente_novamente_handler)
         for i in numeros:
                 if str(i[0])==numero:
-                        print('IGUAL')
                         return False
 
 
