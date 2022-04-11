@@ -24,7 +24,7 @@ global opcoes_handler
 def start(update: Update, context: CallbackContext):
         global chat_id
         chat_id = str(update.message.chat_id)
-        banco = mysql.connector.connect(host='',database='saw_teste',user='root',password='')
+        banco = mysql.connector.connect(host='192.168.10.82',database='saw_teste',user='root',password='rapadura')
         cursor = banco.cursor(buffered=True)
         
         busca_opcoes = cursor.execute("SELECT * FROM teste_telegram")
@@ -75,6 +75,7 @@ def start(update: Update, context: CallbackContext):
         Envie seu contato para podemos prosseguir:
         """,reply_markup=reply_markup)  
         dispatcher.add_handler(mandar_opcoes_handler)
+        dispatcher.add_handler(tente_novamente_handler)
 
 
 
@@ -88,16 +89,14 @@ def mandar_opcoes(update: Update, context: CallbackContext):
         # chat_id=update.effective_chat.id -> localização da mensagem (os chats com updates)
         # update.message.text --> ultimo mensagem do chat 
         # dispatcher.remove_handler(start_handler)
+        dispatcher.remove_handler(tente_novamente_handler)
         banco = mysql.connector.connect(host='192.168.10.82',database='saw_teste',user='root',password='rapadura')
         cursor = banco.cursor(buffered=True)
         busca_opcoes = cursor.execute("SELECT * FROM menu_telegram ORDER BY sequencia")
         opcoes = cursor.fetchall()
         menu_for = []
         for i in opcoes:
-                menu_id = str(i[0])
-
                 menu_desc =  str(i[3])
-                
                 menu_for = str(menu_for) + f"""\n{menu_desc}"""
 
         simbolos = ["[", "]"]
@@ -133,7 +132,7 @@ def mandar_opcoes(update: Update, context: CallbackContext):
 
 def salvar():
 
-        banco = mysql.connector.connect(host='192.168.10.82',database='saw_teste',user='root',password='rapadura')
+        banco = mysql.connector.connect(host='',database='saw_teste',user='root',password='')
         cursor = banco.cursor(buffered=True)
         # cursor.execute("CREATE TABLE users (id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, numero text, first_name text, last_name text)")
         busca_numeros = cursor.execute("SELECT numero FROM teste_telegram")
@@ -180,7 +179,7 @@ def tente_novamente(update: Update, context: CallbackContext):
         context.bot.send_photo(chat_id=update.effective_chat.id, photo=open('files/icone_contato.png', 'rb'))
         
 
-# tente_novamente_handler = MessageHandler(Filters.text, tente_novamente)
+tente_novamente_handler = MessageHandler(Filters.text, tente_novamente)
 # dispatcher.add_handler(tente_novamente_handler)
 
 # mandar_opcoes_handler = MessageHandler(Filters.contact, mandar_opcoes)
