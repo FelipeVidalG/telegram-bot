@@ -5,7 +5,7 @@ from telegram import Contact, MessageId, Update
 import logging
 import mysql.connector
 
-# inicialização
+# inicialização e configuração do bot
 updater = Updater(token="5180663220:AAGRZL-gErS01fkfIU0zoRmlCQxaoFLMvV4")
 dispatcher = updater.dispatcher
 
@@ -20,11 +20,13 @@ global opcoes_handler
 
 # responde o command messages /
 
-# solicita contato para o user e começa robô
+# solicita contato para o user caso seja a primeira conversa e começa robô
 def start(update: Update, context: CallbackContext):
         global chat_id
         chat_id = str(update.message.chat_id)
-        banco = mysql.connector.connect(host='192.168.10.82',database='saw_teste',user='root',password='rapadura')
+       
+        # conexao com o banco para fazer buscas
+        banco = mysql.connector.connect(host='',database='saw_teste',user='root',password='')
         cursor = banco.cursor(buffered=True)
         
         busca_opcoes = cursor.execute("SELECT * FROM teste_telegram")
@@ -43,6 +45,8 @@ def start(update: Update, context: CallbackContext):
         if opcoes_handler != '':
                 dispatcher.remove_handler(opcoes_handler)
 
+
+        # busca no banco as opções do menu
         menu_for = []
         for i in menu_resultado:
                 menu_desc =  str(i[3])
@@ -59,6 +63,7 @@ def start(update: Update, context: CallbackContext):
         menu = f"""{text}
                 {menu_for}"""  
 
+        # compara todos os chat id do banco de dados com o chat id da conversa atual
         for i in opcoes:
                 if str(i[4])==chat_id:
                         context.bot.send_message(chat_id=update.effective_chat.id, text=menu)  
@@ -69,6 +74,7 @@ def start(update: Update, context: CallbackContext):
                         return False
         
         
+        # caso seja a primeira vez do usuário solicita o contato
         mandar_opcoes_handler = MessageHandler(Filters.contact, mandar_opcoes)
         context.bot.send_message(chat_id=update.effective_chat.id, text="""
         Ola! Aqui é o robô da TireShop.
@@ -78,13 +84,12 @@ def start(update: Update, context: CallbackContext):
         dispatcher.add_handler(tente_novamente_handler)
 
 
-
+# executa a função
 start_handler = CommandHandler('start', start)
 dispatcher.add_handler(start_handler)
 
 
-# pega o contato enviado pelo user
-# Toda mensagem retorna True
+# Recebe o contato do usuário e manda as opções do menu
 def mandar_opcoes(update: Update, context: CallbackContext):
         # chat_id=update.effective_chat.id -> localização da mensagem (os chats com updates)
         # update.message.text --> ultimo mensagem do chat 
@@ -128,13 +133,16 @@ def mandar_opcoes(update: Update, context: CallbackContext):
 
 
 
-# Salvar informações no banco
+# Salva as informações no banco de dados
 
 def salvar():
 
+        # conexão com o banco
         banco = mysql.connector.connect(host='',database='saw_teste',user='root',password='')
         cursor = banco.cursor(buffered=True)
         # cursor.execute("CREATE TABLE users (id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, numero text, first_name text, last_name text)")
+        
+        # busca no banco de dados de usuários
         busca_numeros = cursor.execute("SELECT numero FROM teste_telegram")
         numeros = cursor.fetchall()
         dispatcher.remove_handler(mandar_opcoes_handler)
@@ -143,10 +151,13 @@ def salvar():
         opcoes_handler = MessageHandler(Filters.text, opcoes)
         dispatcher.add_handler(opcoes_handler)
         # dispatcher.remove_handler(tente_novamente_handler)
+       
+        # compara o numero atual com os numeros cadastrados no banco de dados
         for i in numeros:
                 if str(i[0])==numero:
                         return False
 
+        # caso usuário não esteja cadastrado, cadastra informações no banco
         try:
                 if last_name != None:
                         cursor.execute(f"INSERT INTO teste_telegram (numero,first_name,last_name,chat_id) VALUES('{numero}','{first_name}','{last_name}','{chat_id}')")
@@ -160,6 +171,7 @@ def salvar():
 
         
 
+# Resposta das opções do menu
 def opcoes(update: Update, context: CallbackContext):
         if update.message.text == '1':
                 context.bot.send_message(chat_id=update.effective_chat.id, text='você escolheu a opção 1')
@@ -172,6 +184,7 @@ def opcoes(update: Update, context: CallbackContext):
         else:
                  context.bot.send_message(chat_id=update.effective_chat.id,text=f"""Opção inválida, tente novamente:\n{menu}""")
 
+# Caso usuário não envie contato entra nessa função
 def tente_novamente(update: Update, context: CallbackContext):
         context.bot.send_message(chat_id=update.effective_chat.id, text="""
         Por favor, envie seu contato para continuar. \nCaso estiver usando o telegram web clique no ícone demonstrado a seguir.
@@ -180,14 +193,8 @@ def tente_novamente(update: Update, context: CallbackContext):
         
 
 tente_novamente_handler = MessageHandler(Filters.text, tente_novamente)
-# dispatcher.add_handler(tente_novamente_handler)
-
-# mandar_opcoes_handler = MessageHandler(Filters.contact, mandar_opcoes)
-# dispatcher.add_handler(mandar_opcoes_handler)
 
 opcoes_handler = MessageHandler(Filters.text, opcoes)
-# opcoes_handler = MessageHandler(Filters.text, opcoes)
-# dispatcher.add_handler(opcoes_handler)
 
 
               
