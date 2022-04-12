@@ -26,7 +26,7 @@ def start(update: Update, context: CallbackContext):
         chat_id = str(update.message.chat_id)
        
         # conexao com o banco para fazer buscas
-        banco = mysql.connector.connect(host='',database='saw_teste',user='root',password='')
+        banco = mysql.connector.connect(host='192.168.10.82',database='saw_teste',user='root',password='rapadura')
         cursor = banco.cursor(buffered=True)
         
         busca_opcoes = cursor.execute("SELECT * FROM tbcontatos")
@@ -67,10 +67,10 @@ def start(update: Update, context: CallbackContext):
         for i in opcoes:
                 if str(i[1])==chat_id:
                         context.bot.send_message(chat_id=update.effective_chat.id, text=menu)  
+                        atendimento()
                         global mandar_opcoes_handler
                         # mandar_opcoes_handler = MessageHandler(Filters.text, mandar_opcoes)
                         dispatcher.add_handler(opcoes_handler)
-                        atendimento()
                         # dispatcher.remove_handler(tente_novamente_handler)
                         return False
         
@@ -102,7 +102,7 @@ def mandar_opcoes(update: Update, context: CallbackContext):
         dispatcher.remove_handler(tente_novamente_handler)
 
         # conexao com o banco para fazer buscas
-        banco = mysql.connector.connect(host='',database='saw_teste',user='root',password='')
+        banco = mysql.connector.connect(host='192.168.10.82',database='saw_teste',user='root',password='rapadura')
         cursor = banco.cursor(buffered=True)
         busca_opcoes = cursor.execute("SELECT * FROM tbmenu ORDER BY sequencia")
         opcoes = cursor.fetchall()
@@ -148,7 +148,7 @@ def mandar_opcoes(update: Update, context: CallbackContext):
 def salvar():
 
         # conexão com o banco
-        banco = mysql.connector.connect(host='',database='saw_teste',user='root',password='')
+        banco = mysql.connector.connect(host='192.168.10.82',database='saw_teste',user='root',password='rapadura')
         cursor = banco.cursor(buffered=True)
         # cursor.execute("CREATE TABLE users (id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, numero text, first_name text, last_name text)")
         
@@ -185,37 +185,43 @@ def salvar():
         
 def atendimento():
          # conexao com o banco para fazer buscas
-        banco = mysql.connector.connect(host='',database='saw_teste',user='root',password='')
+        banco = mysql.connector.connect(host='192.168.10.82',database='saw_teste',user='root',password='rapadura')
         cursor = banco.cursor(buffered=True)
 
+        global nome
         buscar_nome = cursor.execute(f'SELECT nome FROM tbcontatos WHERE chatid = {chat_id}')
         nomes = cursor.fetchall()
         nome = nomes[0][0]
 
+        global numero
         buscar_numero = cursor.execute(f'SELECT numero FROM tbcontatos WHERE chatid = {chat_id}')
         numeros = cursor.fetchall()
         numero = numeros[0][0]
     
-        busca_atendimento = cursor.execute(f"SELECT id FROM tbatendimento WHERE numero = '{numero}' AND canal = 3 ")
+        busca_atendimento = cursor.execute(f"SELECT id FROM tbatendimento WHERE numero = '{numero}' AND canal = 3 AND situacao IN('T', 'A') ")
         atendimentos = cursor.fetchall()
 
-        print('sei la')
+        global novo_id
+
         if atendimentos == []:
-                cursor.execute(f"INSERT INTO tbatendimento (id,situacao,numero,nome,canal) VALUES('1','A',{numero},'{nome}','3')")
-                cursor.execute("SELECT canal FROM tbatendimento WHERE canal = 3")
-                teste = cursor.fetchall()
-                print(teste)
+                cursor.execute(f"SELECT id FROM tbatendimento WHERE numero = {numero}")
+                lista_id = cursor.fetchall()
+                if lista_id == []:
+                        novo_id = 1
+                        cursor.execute(f"INSERT INTO tbatendimento (id,situacao,numero,nome,canal) VALUES('{novo_id}','A',{numero},'{nome}','3')")
+                else:
+                        novo_id = lista_id[-1][0] + 1
+                        cursor.execute(f"INSERT INTO tbatendimento (id,situacao,numero,nome,canal) VALUES('{novo_id}','A','{numero}','{nome}','3')")
         else:
-                print('aaaaaaaaaaaaaaaaaaaaaaaaaaaa')
-                print(atendimentos)
-                novo_id = atendimentos[-1][0] + 1
-                cursor.execute(f"INSERT INTO tbatendimento (id,situacao,numero,nome,canal) VALUES('{novo_id}','A','{numero}','{nome}','3')")
+                print('ATENDIMENTO EM ABERTO!')
                 
         banco.commit()
                 
 
 # Resposta das opções do menu
 def opcoes(update: Update, context: CallbackContext):
+        global msg_recebida
+        msg_recebida = update.message.text
         if update.message.text == '1':
                 context.bot.send_message(chat_id=update.effective_chat.id, text='você escolheu a opção 1')
         elif update.message.text == '2':
@@ -225,7 +231,15 @@ def opcoes(update: Update, context: CallbackContext):
         elif update.message.text == '4':
                 context.bot.send_document(chat_id=update.effective_chat.id, document=open('files/report.pdf', 'rb'))
         else:
-                 context.bot.send_message(chat_id=update.effective_chat.id,text=f"""Opção inválida, tente novamente:\n{menu}""")
+                context.bot.send_message(chat_id=update.effective_chat.id,text=f"""Opção inválida, tente novamente:\n{menu}""")
+                # salvar_msg()
+
+def salvar_msg():
+        banco = mysql.connector.connect(host='192.168.10.82',database='saw_teste',user='root',password='rapadura')
+        cursor = banco.cursor(buffered=True)
+        print(msg_recebida, novo_id)
+        cursor.execute(f"INSERT INTO tbmsgatendimento (id,numero,msg,canal,nome_chat) VALUES('{novo_id}','{numero}','{msg_recebida}','3','{nome}')")
+        banco.commit()
 
 # Caso usuário não envie contato entra nessa função
 def tente_novamente(update: Update, context: CallbackContext):
