@@ -29,10 +29,10 @@ def start(update: Update, context: CallbackContext):
         banco = mysql.connector.connect(host='',database='saw_teste',user='root',password='')
         cursor = banco.cursor(buffered=True)
         
-        busca_opcoes = cursor.execute("SELECT * FROM teste_telegram")
+        busca_opcoes = cursor.execute("SELECT * FROM tbcontatos")
         opcoes = cursor.fetchall()
 
-        busca_menu = cursor.execute("SELECT * FROM menu_telegram ORDER BY sequencia")
+        busca_menu = cursor.execute("SELECT * FROM tbmenu ORDER BY sequencia")
         menu_resultado = cursor.fetchall()
 
         global botao
@@ -65,11 +65,12 @@ def start(update: Update, context: CallbackContext):
 
         # compara todos os chat id do banco de dados com o chat id da conversa atual
         for i in opcoes:
-                if str(i[4])==chat_id:
+                if str(i[1])==chat_id:
                         context.bot.send_message(chat_id=update.effective_chat.id, text=menu)  
                         global mandar_opcoes_handler
                         # mandar_opcoes_handler = MessageHandler(Filters.text, mandar_opcoes)
                         dispatcher.add_handler(opcoes_handler)
+                        atendimento()
                         # dispatcher.remove_handler(tente_novamente_handler)
                         return False
         
@@ -77,7 +78,7 @@ def start(update: Update, context: CallbackContext):
         # caso seja a primeira vez do usuário solicita o contato
         mandar_opcoes_handler = MessageHandler(Filters.contact, mandar_opcoes)
         context.bot.send_message(chat_id=update.effective_chat.id, text="""
-        Ola! Aqui é o robô da TireShop.
+        Ola! Aqui é o robô do Telegram.
         Envie seu contato para podemos prosseguir:
         """,reply_markup=reply_markup)  
         dispatcher.add_handler(mandar_opcoes_handler)
@@ -89,16 +90,24 @@ start_handler = CommandHandler('start', start)
 dispatcher.add_handler(start_handler)
 
 
+
 # Recebe o contato do usuário e manda as opções do menu
 def mandar_opcoes(update: Update, context: CallbackContext):
+        atendimento()
         # chat_id=update.effective_chat.id -> localização da mensagem (os chats com updates)
         # update.message.text --> ultimo mensagem do chat 
         # dispatcher.remove_handler(start_handler)
+
+        # remove o handler de tente novamente
         dispatcher.remove_handler(tente_novamente_handler)
-        banco = mysql.connector.connect(host='192.168.10.82',database='saw_teste',user='root',password='rapadura')
+
+        # conexao com o banco para fazer buscas
+        banco = mysql.connector.connect(host='',database='saw_teste',user='root',password='')
         cursor = banco.cursor(buffered=True)
-        busca_opcoes = cursor.execute("SELECT * FROM menu_telegram ORDER BY sequencia")
+        busca_opcoes = cursor.execute("SELECT * FROM tbmenu ORDER BY sequencia")
         opcoes = cursor.fetchall()
+
+        # gera menu de opções através do banco
         menu_for = []
         for i in opcoes:
                 menu_desc =  str(i[3])
@@ -107,8 +116,6 @@ def mandar_opcoes(update: Update, context: CallbackContext):
         simbolos = ["[", "]"]
         for c in simbolos:
                 menu_for = menu_for.replace(c,'')
-
-        
 
         global menu
         text = "Digite um dos números abaixo para escolher uma das opções:"
@@ -121,11 +128,14 @@ def mandar_opcoes(update: Update, context: CallbackContext):
         global numero
         global first_name
         global last_name
+        global nome
         try:
                 numero = update.message.contact.phone_number
                 first_name = update.message.contact.first_name
                 last_name = update.message.contact.last_name
+                nome = f'{first_name} {last_name}'
         except:
+                print('erro')
                 pass
         # print(update.message.contact)
         # print(f"{numero} e {first_name} {last_name}")
@@ -143,7 +153,7 @@ def salvar():
         # cursor.execute("CREATE TABLE users (id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, numero text, first_name text, last_name text)")
         
         # busca no banco de dados de usuários
-        busca_numeros = cursor.execute("SELECT numero FROM teste_telegram")
+        busca_numeros = cursor.execute("SELECT * FROM tbcontatos")
         numeros = cursor.fetchall()
         dispatcher.remove_handler(mandar_opcoes_handler)
 
@@ -157,19 +167,52 @@ def salvar():
                 if str(i[0])==numero:
                         return False
 
+
         # caso usuário não esteja cadastrado, cadastra informações no banco
         try:
                 if last_name != None:
-                        cursor.execute(f"INSERT INTO teste_telegram (numero,first_name,last_name,chat_id) VALUES('{numero}','{first_name}','{last_name}','{chat_id}')")
+                        cursor.execute(f"INSERT INTO tbcontatos (numero,chatid,nome) VALUES('{numero}','{chat_id}','{nome}')")
                 else:
-                        cursor.execute(f"INSERT INTO teste_telegram (numero,first_name,last_name,chat_id) VALUES('{numero}','{first_name}','VAZIO','{chat_id}')")
+                        nome = first_name
+                        cursor.execute(f"INSERT INTO tbcontatos (numero,chatid,nome) VALUES('{numero}','{chat_id}','{nome}')")
         except:
+                print('erro banco')
                 pass
 
 
         banco.commit()
 
         
+def atendimento():
+         # conexao com o banco para fazer buscas
+        banco = mysql.connector.connect(host='',database='saw_teste',user='root',password='')
+        cursor = banco.cursor(buffered=True)
+
+        buscar_nome = cursor.execute(f'SELECT nome FROM tbcontatos WHERE chatid = {chat_id}')
+        nomes = cursor.fetchall()
+        nome = nomes[0][0]
+
+        buscar_numero = cursor.execute(f'SELECT numero FROM tbcontatos WHERE chatid = {chat_id}')
+        numeros = cursor.fetchall()
+        numero = numeros[0][0]
+    
+        busca_atendimento = cursor.execute(f"SELECT id FROM tbatendimento WHERE numero = '{numero}' AND canal = 3 ")
+        atendimentos = cursor.fetchall()
+
+        print('sei la')
+        if atendimentos == []:
+                cursor.execute(f"INSERT INTO tbatendimento (id,situacao,numero,nome,canal) VALUES('1','A',{numero},'{nome}','3')")
+                cursor.execute("SELECT canal FROM tbatendimento WHERE canal = 3")
+                teste = cursor.fetchall()
+                print(teste)
+        else:
+                print('aaaaaaaaaaaaaaaaaaaaaaaaaaaa')
+                print(atendimentos)
+                novo_id = atendimentos[-1][0] + 1
+                cursor.execute(f"INSERT INTO tbatendimento (id,situacao,numero,nome,canal) VALUES('{novo_id}','A','{numero}','{nome}','3')")
+                
+        banco.commit()
+                
 
 # Resposta das opções do menu
 def opcoes(update: Update, context: CallbackContext):
