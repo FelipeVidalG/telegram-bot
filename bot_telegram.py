@@ -67,7 +67,7 @@ def start(update: Update, context: CallbackContext):
         for i in opcoes:
                 if str(i[1])==chat_id:
                         context.bot.send_message(chat_id=update.effective_chat.id, text=menu)  
-                        atendimento()
+                        # atendimento()
                         global mandar_opcoes_handler
                         # mandar_opcoes_handler = MessageHandler(Filters.text, mandar_opcoes)
                         dispatcher.add_handler(opcoes_handler)
@@ -93,7 +93,7 @@ dispatcher.add_handler(start_handler)
 
 # Recebe o contato do usuário e manda as opções do menu
 def mandar_opcoes(update: Update, context: CallbackContext):
-        atendimento()
+        # atendimento()
         # chat_id=update.effective_chat.id -> localização da mensagem (os chats com updates)
         # update.message.text --> ultimo mensagem do chat 
         # dispatcher.remove_handler(start_handler)
@@ -183,8 +183,46 @@ def salvar():
         banco.commit()
 
         
-def atendimento():
-         # conexao com o banco para fazer buscas
+# def atendimento():
+#          # conexao com o banco para fazer buscas
+#         banco = mysql.connector.connect(host='192.168.10.82',database='saw_teste',user='root',password='rapadura')
+#         cursor = banco.cursor(buffered=True)
+
+#         global nome
+#         buscar_nome = cursor.execute(f'SELECT nome FROM tbcontatos WHERE chatid = {chat_id}')
+#         nomes = cursor.fetchall()
+#         nome = nomes[0][0]
+
+#         global numero
+#         buscar_numero = cursor.execute(f'SELECT numero FROM tbcontatos WHERE chatid = {chat_id}')
+#         numeros = cursor.fetchall()
+#         numero = numeros[0][0]
+    
+#         busca_atendimento = cursor.execute(f"SELECT id FROM tbatendimento WHERE numero = '{numero}' AND canal = 3 AND situacao IN('T', 'A') ")
+#         atendimentos = cursor.fetchall()
+
+#         global novo_id
+
+#         if atendimentos == []:
+#                 cursor.execute(f"SELECT id FROM tbatendimento WHERE numero = {numero}")
+#                 lista_id = cursor.fetchall()
+#                 if lista_id == []:
+#                         novo_id = 1
+#                         cursor.execute(f"INSERT INTO tbatendimento (id,situacao,numero,nome,canal) VALUES('{novo_id}','A',{numero},'{nome}','3')")
+#                 else:
+#                         novo_id = lista_id[-1][0] + 1
+#                         cursor.execute(f"INSERT INTO tbatendimento (id,situacao,numero,nome,canal) VALUES('{novo_id}','A','{numero}','{nome}','3')")
+#         else:
+#                 print('ATENDIMENTO EM ABERTO!')
+                
+#         banco.commit()
+                
+
+# Resposta das opções do menu
+def opcoes(update: Update, context: CallbackContext):
+        global msg_recebida
+        msg_recebida = update.message.text
+
         banco = mysql.connector.connect(host='192.168.10.82',database='saw_teste',user='root',password='rapadura')
         cursor = banco.cursor(buffered=True)
 
@@ -209,19 +247,21 @@ def atendimento():
                 if lista_id == []:
                         novo_id = 1
                         cursor.execute(f"INSERT INTO tbatendimento (id,situacao,numero,nome,canal) VALUES('{novo_id}','A',{numero},'{nome}','3')")
+                        cursor.execute(f"INSERT INTO tbmsgatendimento (id,numero,msg,canal,nome_chat) VALUES('{novo_id}','{numero}','{msg_recebida}','3','{nome}')")            
                 else:
                         novo_id = lista_id[-1][0] + 1
                         cursor.execute(f"INSERT INTO tbatendimento (id,situacao,numero,nome,canal) VALUES('{novo_id}','A','{numero}','{nome}','3')")
+                        cursor.execute(f"INSERT INTO tbmsgatendimento (id,numero,msg,canal,nome_chat) VALUES('{novo_id}','{numero}','{msg_recebida}','3','{nome}')")            
         else:
                 print('ATENDIMENTO EM ABERTO!')
+                novo_id=atendimentos[0][0]
+                cursor.execute(f"INSERT INTO tbmsgatendimento (id,numero,msg,canal,nome_chat) VALUES('{novo_id}','{numero}','{msg_recebida}','3','{nome}')")
+
+        
+        # print(novo_id)
                 
         banco.commit()
-                
 
-# Resposta das opções do menu
-def opcoes(update: Update, context: CallbackContext):
-        global msg_recebida
-        msg_recebida = update.message.text
         if update.message.text == '1':
                 context.bot.send_message(chat_id=update.effective_chat.id, text='você escolheu a opção 1')
         elif update.message.text == '2':
@@ -232,14 +272,13 @@ def opcoes(update: Update, context: CallbackContext):
                 context.bot.send_document(chat_id=update.effective_chat.id, document=open('files/report.pdf', 'rb'))
         else:
                 context.bot.send_message(chat_id=update.effective_chat.id,text=f"""Opção inválida, tente novamente:\n{menu}""")
-                # salvar_msg()
+        # salvar_msg()
 
-def salvar_msg():
-        banco = mysql.connector.connect(host='192.168.10.82',database='saw_teste',user='root',password='rapadura')
-        cursor = banco.cursor(buffered=True)
-        print(msg_recebida, novo_id)
-        cursor.execute(f"INSERT INTO tbmsgatendimento (id,numero,msg,canal,nome_chat) VALUES('{novo_id}','{numero}','{msg_recebida}','3','{nome}')")
-        banco.commit()
+# def salvar_msg():
+#         banco = mysql.connector.connect(host='192.168.10.82',database='saw_teste',user='root',password='rapadura')
+#         cursor = banco.cursor(buffered=True)
+#         print(msg_recebida, novo_id)
+#         banco.commit()
 
 # Caso usuário não envie contato entra nessa função
 def tente_novamente(update: Update, context: CallbackContext):
