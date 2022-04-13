@@ -16,6 +16,7 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 numero = ''
 
 global opcoes_handler
+
 # opcoes_handler = ''
 
 # responde o command messages /
@@ -137,36 +138,23 @@ def mandar_opcoes(update: Update, context: CallbackContext):
         except:
                 print('erro')
                 pass
-        # print(update.message.contact)
-        # print(f"{numero} e {first_name} {last_name}")
-        salvar()
-
 
 
 # Salva as informações no banco de dados
 
-def salvar():
-
-        # conexão com o banco
-        banco = mysql.connector.connect(host='192.168.10.82',database='saw_teste',user='root',password='rapadura')
-        cursor = banco.cursor(buffered=True)
-        # cursor.execute("CREATE TABLE users (id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, numero text, first_name text, last_name text)")
-        
-        # busca no banco de dados de usuários
+          # busca no banco de dados de usuários
         busca_numeros = cursor.execute("SELECT * FROM tbcontatos")
         numeros = cursor.fetchall()
-        dispatcher.remove_handler(mandar_opcoes_handler)
-
-        global opcoes_handler
-        opcoes_handler = MessageHandler(Filters.text, opcoes)
+        # dispatcher.remove_handler(mandar_opcoes_handler)
         dispatcher.add_handler(opcoes_handler)
-        # dispatcher.remove_handler(tente_novamente_handler)
+        dispatcher.remove_handler(tente_novamente_handler)
        
         # compara o numero atual com os numeros cadastrados no banco de dados
         for i in numeros:
                 if str(i[0])==numero:
                         return False
 
+        
 
         # caso usuário não esteja cadastrado, cadastra informações no banco
         try:
@@ -182,64 +170,31 @@ def salvar():
 
         banco.commit()
 
-        
-# def atendimento():
-#          # conexao com o banco para fazer buscas
-#         banco = mysql.connector.connect(host='192.168.10.82',database='saw_teste',user='root',password='rapadura')
-#         cursor = banco.cursor(buffered=True)
 
-#         global nome
-#         buscar_nome = cursor.execute(f'SELECT nome FROM tbcontatos WHERE chatid = {chat_id}')
-#         nomes = cursor.fetchall()
-#         nome = nomes[0][0]
 
-#         global numero
-#         buscar_numero = cursor.execute(f'SELECT numero FROM tbcontatos WHERE chatid = {chat_id}')
-#         numeros = cursor.fetchall()
-#         numero = numeros[0][0]
-    
-#         busca_atendimento = cursor.execute(f"SELECT id FROM tbatendimento WHERE numero = '{numero}' AND canal = 3 AND situacao IN('T', 'A') ")
-#         atendimentos = cursor.fetchall()
 
-#         global novo_id
-
-#         if atendimentos == []:
-#                 cursor.execute(f"SELECT id FROM tbatendimento WHERE numero = {numero}")
-#                 lista_id = cursor.fetchall()
-#                 if lista_id == []:
-#                         novo_id = 1
-#                         cursor.execute(f"INSERT INTO tbatendimento (id,situacao,numero,nome,canal) VALUES('{novo_id}','A',{numero},'{nome}','3')")
-#                 else:
-#                         novo_id = lista_id[-1][0] + 1
-#                         cursor.execute(f"INSERT INTO tbatendimento (id,situacao,numero,nome,canal) VALUES('{novo_id}','A','{numero}','{nome}','3')")
-#         else:
-#                 print('ATENDIMENTO EM ABERTO!')
-                
-#         banco.commit()
-                
 
 # Resposta das opções do menu
 def opcoes(update: Update, context: CallbackContext):
-        global msg_recebida
         msg_recebida = update.message.text
 
         banco = mysql.connector.connect(host='192.168.10.82',database='saw_teste',user='root',password='rapadura')
         cursor = banco.cursor(buffered=True)
 
-        global nome
         buscar_nome = cursor.execute(f'SELECT nome FROM tbcontatos WHERE chatid = {chat_id}')
         nomes = cursor.fetchall()
         nome = nomes[0][0]
 
-        global numero
         buscar_numero = cursor.execute(f'SELECT numero FROM tbcontatos WHERE chatid = {chat_id}')
         numeros = cursor.fetchall()
         numero = numeros[0][0]
+ 
     
         busca_atendimento = cursor.execute(f"SELECT id FROM tbatendimento WHERE numero = '{numero}' AND canal = 3 AND situacao IN('T', 'A') ")
         atendimentos = cursor.fetchall()
 
-        global novo_id
+
+
 
         if atendimentos == []:
                 cursor.execute(f"SELECT id FROM tbatendimento WHERE numero = {numero}")
@@ -262,23 +217,53 @@ def opcoes(update: Update, context: CallbackContext):
                 
         banco.commit()
 
-        if update.message.text == '1':
-                context.bot.send_message(chat_id=update.effective_chat.id, text='você escolheu a opção 1')
-        elif update.message.text == '2':
-                context.bot.send_photo(chat_id=update.effective_chat.id, photo=open('files/images.jpg', 'rb'))
-        elif update.message.text == '3':
-                context.bot.send_video(chat_id=update.effective_chat.id,video=open('files/realshort.mp4', 'rb'), supports_streaming=True)
-        elif update.message.text == '4':
-                context.bot.send_document(chat_id=update.effective_chat.id, document=open('files/report.pdf', 'rb'))
-        else:
-                context.bot.send_message(chat_id=update.effective_chat.id,text=f"""Opção inválida, tente novamente:\n{menu}""")
-        # salvar_msg()
+        # nova estrutura de opções abaixo
 
-# def salvar_msg():
-#         banco = mysql.connector.connect(host='192.168.10.82',database='saw_teste',user='root',password='rapadura')
-#         cursor = banco.cursor(buffered=True)
-#         print(msg_recebida, novo_id)
-#         banco.commit()
+        buscar_opcoes = cursor.execute('SELECT id FROM tbmenu')
+        opcoes_id = cursor.fetchall()
+        
+# Verifica opção escolhida e joga a resposta para o usuário, se for inválida retorna o menu novamente.
+        for x in opcoes_id:
+                if msg_recebida == str(x[0]):
+                        try:
+                                cursor.execute(f"SELECT descricao FROM tbrespostasautomaticas WHERE id_menu = {msg_recebida}")
+                                resposta = cursor.fetchall()
+                                resposta = resposta[0][0]
+                                texto = "TESTE: "
+                                context.bot.send_message(chat_id=update.effective_chat.id,text=f"{texto} {resposta}")
+                                return False
+                        except:
+                                print('ERRO!')
+                                # cursor.execute(f'SELECT departamento FROM tbdepartamentos WHERE id = 20')
+                                # resposta = cursor.fetchall()
+                                # resposta = resposta[0][0]
+                                # texto = "Você será redirecionado para o departamento: "
+                                # context.bot.send_message(chat_id=update.effective_chat.id,text=f"{texto} {resposta}")
+        if msg_recebida == '1' or msg_recebida=='2' or msg_recebida== '3' or msg_recebida=='4':
+                cursor.execute(f'SELECT departamento FROM tbdepartamentos WHERE id = 20')
+                resposta = cursor.fetchall()
+                resposta = resposta[0][0]
+                texto = "Você será redirecionado para o departamento: "
+                context.bot.send_message(chat_id=update.effective_chat.id,text=f"{texto} {resposta}")
+        else:
+                context.bot.send_message(chat_id=update.effective_chat.id,text=f"Opção inválida selecione outra opção:\n{menu}")
+
+# Fim verificação mensagem.
+
+
+
+
+        # if update.message.text == '1':
+        #         context.bot.send_message(chat_id=update.effective_chat.id, text='você escolheu a opção 1')
+        # elif update.message.text == '2':
+        #         context.bot.send_photo(chat_id=update.effective_chat.id, photo=open('files/images.jpg', 'rb'))
+        # elif update.message.text == '3':
+        #         context.bot.send_video(chat_id=update.effective_chat.id,video=open('files/realshort.mp4', 'rb'), supports_streaming=True)
+        # elif update.message.text == '4':
+        #         context.bot.send_document(chat_id=update.effective_chat.id, document=open('files/report.pdf', 'rb'))
+        # else:
+        #         context.bot.send_message(chat_id=update.effective_chat.id,text=f"""Opção inválida, tente novamente:\n{menu}""")
+
 
 # Caso usuário não envie contato entra nessa função
 def tente_novamente(update: Update, context: CallbackContext):
