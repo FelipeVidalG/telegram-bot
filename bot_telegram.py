@@ -4,6 +4,8 @@ from telegram.ext import Updater, CallbackContext, CommandHandler, MessageHandle
 from telegram import Contact, MessageId, Update
 import logging
 import mysql.connector
+import time
+
 
 # inicialização e configuração do bot
 updater = Updater(token="5180663220:AAGRZL-gErS01fkfIU0zoRmlCQxaoFLMvV4")
@@ -14,6 +16,7 @@ bot = telegram.Bot("5180663220:AAGRZL-gErS01fkfIU0zoRmlCQxaoFLMvV4")
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',level=logging.INFO)  # mostrará os erros
 
 numero = ''
+sequencia = -1
 
 global opcoes_handler
 
@@ -25,7 +28,10 @@ global opcoes_handler
 def start(update: Update, context: CallbackContext):
         global chat_id
         chat_id = str(update.message.chat_id)
-       
+
+        global sequencia
+        sequencia = -1
+
         # conexao com o banco para fazer buscas
         banco = mysql.connector.connect(host='192.168.10.82',database='saw_teste',user='root',password='rapadura')
         cursor = banco.cursor(buffered=True)
@@ -176,6 +182,9 @@ def mandar_opcoes(update: Update, context: CallbackContext):
 
 # Resposta das opções do menu
 def opcoes(update: Update, context: CallbackContext):
+        global sequencia
+        sequencia += 1
+        print(sequencia)
         msg_recebida = update.message.text
 
         banco = mysql.connector.connect(host='192.168.10.82',database='saw_teste',user='root',password='rapadura')
@@ -193,26 +202,24 @@ def opcoes(update: Update, context: CallbackContext):
         busca_atendimento = cursor.execute(f"SELECT id FROM tbatendimento WHERE numero = '{numero}' AND canal = 3 AND situacao IN('T', 'A') ")
         atendimentos = cursor.fetchall()
 
-
-
-
         if atendimentos == []:
                 cursor.execute(f"SELECT id FROM tbatendimento WHERE numero = {numero}")
                 lista_id = cursor.fetchall()
                 if lista_id == []:
                         novo_id = 1
-                        cursor.execute(f"INSERT INTO tbatendimento (id,situacao,numero,nome,canal) VALUES('{novo_id}','A',{numero},'{nome}','3')")
-                        cursor.execute(f"INSERT INTO tbmsgatendimento (id,numero,msg,canal,nome_chat) VALUES('{novo_id}','{numero}','{msg_recebida}','3','{nome}')")            
+                        cursor.execute(f"INSERT INTO tbatendimento (id,situacao,numero,dt_atend,hr_atend,nome,canal,dt_fim) VALUES('{novo_id}','A',{numero},NOW(),NOW(),'{nome}','3',NOW())")
+                        cursor.execute(f"INSERT INTO tbmsgatendimento (id,seq,numero,msg,dt_msg,hr_msg,canal) VALUES('{novo_id}','{sequencia}','{numero}','{msg_recebida}',NOW(),NOW(),'3')") 
                 else:
                         novo_id = lista_id[-1][0] + 1
-                        cursor.execute(f"INSERT INTO tbatendimento (id,situacao,numero,nome,canal) VALUES('{novo_id}','A','{numero}','{nome}','3')")
-                        cursor.execute(f"INSERT INTO tbmsgatendimento (id,numero,msg,canal,nome_chat) VALUES('{novo_id}','{numero}','{msg_recebida}','3','{nome}')")            
+                        cursor.execute(f"INSERT INTO tbatendimento (id,situacao,numero,dt_atend,hr_atend,nome,canal,dt_fim) VALUES('{novo_id}','A',{numero},NOW(),NOW(),'{nome}','3',NOW())")
+                        cursor.execute(f"INSERT INTO tbmsgatendimento (id,seq,numero,msg,dt_msg,hr_msg,canal) VALUES('{novo_id}','{sequencia}','{numero}','{msg_recebida}',NOW(),NOW(),'3')")
+
         else:
                 print('ATENDIMENTO EM ABERTO!')
                 novo_id=atendimentos[0][0]
-                cursor.execute(f"INSERT INTO tbmsgatendimento (id,numero,msg,canal,nome_chat) VALUES('{novo_id}','{numero}','{msg_recebida}','3','{nome}')")
+                cursor.execute(f"INSERT INTO tbmsgatendimento (id,seq,numero,msg,dt_msg,hr_msg,canal,nome_chat) VALUES('{novo_id}','{sequencia}','{numero}','{msg_recebida}',NOW(),NOW(),'3','{nome}')")
+                print(sequencia)
 
-        
         # print(novo_id)
                 
         banco.commit()
@@ -231,9 +238,12 @@ def opcoes(update: Update, context: CallbackContext):
                                 resposta = resposta[0][0]
                                 texto = "TESTE: "
                                 context.bot.send_message(chat_id=update.effective_chat.id,text=f"{texto} {resposta}")
+                                context.bot.send_message(chat_id=update.effective_chat.id,text=f"""Deseja encerrar o atendimento?
+                                                                                                   1- SIM
+                                                                                                   2- NAO""")
                                 return False
                         except:
-                                print('ERRO!')
+                                pass
                                 # cursor.execute(f'SELECT departamento FROM tbdepartamentos WHERE id = 20')
                                 # resposta = cursor.fetchall()
                                 # resposta = resposta[0][0]
