@@ -26,6 +26,7 @@ global opcoes_handler
 
 # solicita contato para o user caso seja a primeira conversa e começa robô
 def start(update: Update, context: CallbackContext):
+        dispatcher.remove_handler(start_handler2)
         global chat_id
         chat_id = str(update.message.chat_id)
 
@@ -96,6 +97,7 @@ def start(update: Update, context: CallbackContext):
 start_handler = CommandHandler('start', start)
 dispatcher.add_handler(start_handler)
 
+start_handler2 = MessageHandler(Filters.text, start)
 
 
 # Recebe o contato do usuário e manda as opções do menu
@@ -187,8 +189,13 @@ def opcoes(update: Update, context: CallbackContext):
         print(sequencia)
         msg_recebida = update.message.text
 
+
         banco = mysql.connector.connect(host='192.168.10.82',database='saw_teste',user='root',password='rapadura')
         cursor = banco.cursor(buffered=True)
+        
+        cursor.execute(f"SELECT msg FROM tbmsgatendimento WHERE situacao = 'E'")
+        msg_banco = cursor.fetchall()
+        print(msg_banco)
 
         buscar_nome = cursor.execute(f'SELECT nome FROM tbcontatos WHERE chatid = {chat_id}')
         nomes = cursor.fetchall()
@@ -236,21 +243,31 @@ def opcoes(update: Update, context: CallbackContext):
                                 cursor.execute(f"SELECT descricao FROM tbrespostasautomaticas WHERE id_menu = {msg_recebida}")
                                 resposta = cursor.fetchall()
                                 resposta = resposta[0][0]
-                                texto = "TESTE: "
-                                context.bot.send_message(chat_id=update.effective_chat.id,text=f"{texto} {resposta}")
+                                context.bot.send_message(chat_id=update.effective_chat.id,text=f"{resposta}")
                                 context.bot.send_message(chat_id=update.effective_chat.id,text=f"""Deseja encerrar o atendimento?
 10- SIM
 11- NAO""")
                                 return False
                         except:
-                                cursor.execute(f'SELECT departamento FROM tbdepartamentos WHERE id = 20')
+                                cursor.execute(f'SELECT departamento FROM tbdepartamentos WHERE id_menu = {msg_recebida}')
                                 resposta = cursor.fetchall()
                                 resposta = resposta[0][0]
                                 texto = "Você será redirecionado para o departamento: "
                                 context.bot.send_message(chat_id=update.effective_chat.id,text=f"{texto} {resposta}")
-                                context.bot.send_message(chat_id=update.effective_chat.id,text=f"""Deseja encerrar o atendimento?
-10- SIM
-11- NAO""")
+                                return False
+
+        if msg_recebida == '10':
+                cursor.execute(f"UPDATE `tbatendimento` SET `situacao` = 'F' WHERE `situacao` = 'A' AND `canal` = '3' AND `numero` = '{numero}'")
+                context.bot.send_message(chat_id=update.effective_chat.id,text=f"Atendimento encerrado!")     
+                dispatcher.remove_handler(opcoes_handler)
+                dispatcher.remove_handler(tente_novamente_handler)
+                dispatcher.add_handler(start_handler2)
+                banco.commit()
+
+        else:
+                context.bot.send_message(chat_id=update.effective_chat.id,text=f"Opção inválida selecione outra opção:\n{menu}")
+
+        
 
 #         if msg_recebida == '1' or msg_recebida=='2' or msg_recebida== '3' or msg_recebida=='4':
 #                 cursor.execute(f'SELECT departamento FROM tbdepartamentos WHERE id = 20')
@@ -261,16 +278,6 @@ def opcoes(update: Update, context: CallbackContext):
 #                 context.bot.send_message(chat_id=update.effective_chat.id,text=f"""Deseja encerrar o atendimento?
 # 10- SIM
 # 11- NAO""")
-        if msg_recebida == '10':
-                cursor.execute(f"UPDATE `tbatendimento` SET `situacao` = 'F' WHERE `situacao` = 'A' AND `canal` = '3' AND `numero` = '{numero}'")
-                context.bot.send_message(chat_id=update.effective_chat.id,text=f"Atendimento encerrado!")     
-                dispatcher.remove_handler(opcoes_handler)
-                dispatcher.remove_handler(tente_novamente_handler)
-                banco.commit()
-
-        else:
-                context.bot.send_message(chat_id=update.effective_chat.id,text=f"Opção inválida selecione outra opção:\n{menu}")
-
 # Fim verificação mensagem.
 
 
