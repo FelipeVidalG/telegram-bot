@@ -239,22 +239,29 @@ def opcoes(update: Update, context: CallbackContext):
                                 texto = "TESTE: "
                                 context.bot.send_message(chat_id=update.effective_chat.id,text=f"{texto} {resposta}")
                                 context.bot.send_message(chat_id=update.effective_chat.id,text=f"""Deseja encerrar o atendimento?
-                                10- SIM
-                                11- NAO""")
+10- SIM
+11- NAO""")
                                 return False
                         except:
-                                pass
+                                cursor.execute(f'SELECT departamento FROM tbdepartamentos WHERE id = 20')
+                                resposta = cursor.fetchall()
+                                resposta = resposta[0][0]
+                                texto = "Você será redirecionado para o departamento: "
+                                context.bot.send_message(chat_id=update.effective_chat.id,text=f"{texto} {resposta}")
+                                context.bot.send_message(chat_id=update.effective_chat.id,text=f"""Deseja encerrar o atendimento?
+10- SIM
+11- NAO""")
 
-        if msg_recebida == '1' or msg_recebida=='2' or msg_recebida== '3' or msg_recebida=='4':
-                cursor.execute(f'SELECT departamento FROM tbdepartamentos WHERE id = 20')
-                resposta = cursor.fetchall()
-                resposta = resposta[0][0]
-                texto = "Você será redirecionado para o departamento: "
-                context.bot.send_message(chat_id=update.effective_chat.id,text=f"{texto} {resposta}")
-                context.bot.send_message(chat_id=update.effective_chat.id,text=f"""Deseja encerrar o atendimento?
-                10- SIM
-                11- NAO""")
-        elif msg_recebida == '10':
+#         if msg_recebida == '1' or msg_recebida=='2' or msg_recebida== '3' or msg_recebida=='4':
+#                 cursor.execute(f'SELECT departamento FROM tbdepartamentos WHERE id = 20')
+#                 resposta = cursor.fetchall()
+#                 resposta = resposta[0][0]
+#                 texto = "Você será redirecionado para o departamento: "
+#                 context.bot.send_message(chat_id=update.effective_chat.id,text=f"{texto} {resposta}")
+#                 context.bot.send_message(chat_id=update.effective_chat.id,text=f"""Deseja encerrar o atendimento?
+# 10- SIM
+# 11- NAO""")
+        if msg_recebida == '10':
                 cursor.execute(f"UPDATE `tbatendimento` SET `situacao` = 'F' WHERE `situacao` = 'A' AND `canal` = '3' AND `numero` = '{numero}'")
                 context.bot.send_message(chat_id=update.effective_chat.id,text=f"Atendimento encerrado!")     
                 dispatcher.remove_handler(opcoes_handler)
