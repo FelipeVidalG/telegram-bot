@@ -5,11 +5,13 @@ from telegram import Contact, MessageId, Update
 import logging
 import mysql.connector
 import time
+import threading
 
 
 # inicialização e configuração do bot
 updater = Updater(token="5180663220:AAGRZL-gErS01fkfIU0zoRmlCQxaoFLMvV4")
 dispatcher = updater.dispatcher
+
 
 bot = telegram.Bot("5180663220:AAGRZL-gErS01fkfIU0zoRmlCQxaoFLMvV4")
 
@@ -23,7 +25,6 @@ global opcoes_handler
 # opcoes_handler = ''
 
 # responde o command messages /
-
 # solicita contato para o user caso seja a primeira conversa e começa robô
 def start(update: Update, context: CallbackContext):
         dispatcher.remove_handler(start_handler2)
@@ -98,6 +99,7 @@ start_handler = CommandHandler('start', start)
 dispatcher.add_handler(start_handler)
 
 start_handler2 = MessageHandler(Filters.text, start)
+dispatcher.add_handler(start_handler2)
 
 
 # Recebe o contato do usuário e manda as opções do menu
@@ -150,13 +152,13 @@ def mandar_opcoes(update: Update, context: CallbackContext):
 
 # Salva as informações no banco de dados
 
-          # busca no banco de dados de usuários
+        # busca no banco de dados de usuários
         busca_numeros = cursor.execute("SELECT * FROM tbcontatos")
         numeros = cursor.fetchall()
         # dispatcher.remove_handler(mandar_opcoes_handler)
         dispatcher.add_handler(opcoes_handler)
         dispatcher.remove_handler(tente_novamente_handler)
-       
+
         # compara o numero atual com os numeros cadastrados no banco de dados
         for i in numeros:
                 if str(i[0])==numero:
@@ -177,7 +179,6 @@ def mandar_opcoes(update: Update, context: CallbackContext):
 
 
         banco.commit()
-
 
 
 
@@ -204,8 +205,8 @@ def opcoes(update: Update, context: CallbackContext):
         buscar_numero = cursor.execute(f'SELECT numero FROM tbcontatos WHERE chatid = {chat_id}')
         numeros = cursor.fetchall()
         numero = numeros[0][0]
- 
-    
+
+
         busca_atendimento = cursor.execute(f"SELECT id FROM tbatendimento WHERE numero = '{numero}' AND canal = 3 AND situacao IN('T', 'A') ")
         atendimentos = cursor.fetchall()
 
@@ -267,7 +268,7 @@ def opcoes(update: Update, context: CallbackContext):
         else:
                 context.bot.send_message(chat_id=update.effective_chat.id,text=f"Opção inválida selecione outra opção:\n{menu}")
 
-        
+
 
 #         if msg_recebida == '1' or msg_recebida=='2' or msg_recebida== '3' or msg_recebida=='4':
 #                 cursor.execute(f'SELECT departamento FROM tbdepartamentos WHERE id = 20')
@@ -308,6 +309,34 @@ tente_novamente_handler = MessageHandler(Filters.text, tente_novamente)
 opcoes_handler = MessageHandler(Filters.text, opcoes)
 
 
-              
-
+        
 updater.start_polling()
+
+
+banco = mysql.connector.connect(host='192.168.10.82',database='saw_teste',user='root',password='rapadura')
+cursor = banco.cursor(buffered=True)
+
+cursor.execute(f"SELECT numero FROM tbmsgatendimento WHERE situacao = 'E'")
+numeros1 = cursor.fetchall()
+print(numeros1)
+
+
+def envia_msg():
+        while True:
+                # if numeros1 != []:
+                for num in numeros1:
+                        time.sleep(2)
+                        cursor.execute(f"SELECT chatid FROM tbcontatos WHERE numero={num[0]}")
+                        chat_id = cursor.fetchall()
+                        chat_id = chat_id[0][0]
+                        cursor.execute(f"SELECT msg FROM tbmsgatendimento WHERE numero={num[0]} AND situacao = 'E'")
+                        msg_atendimento = cursor.fetchall()
+                        if msg_atendimento != []:
+                                msg_atendimento = msg_atendimento[0][0]
+                                bot.send_message(chat_id=chat_id,text=msg_atendimento)
+
+
+                        cursor.execute(f"UPDATE tbmsgatendimento SET situacao = 'N' WHERE situacao = 'E' AND numero = {num[0]} AND msg = '{msg_atendimento}'")
+                        print('chegou')
+
+threading.Thread(target=envia_msg).start()
