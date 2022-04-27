@@ -239,11 +239,26 @@ def opcoes(update: Update, context: CallbackContext):
                                 cursor.execute(f"SELECT descricao FROM tbrespostasautomaticas WHERE id_menu = {msg_recebida}")
                                 resposta = cursor.fetchall()
                                 resposta = resposta[0][0]
+                                cursor.execute(f"SELECT acao FROM tbrespostasautomaticas WHERE id_menu = {msg_recebida}")
+                                acao = cursor.fetchall()
+                                acao = acao[0][0]
+                                print(type(acao))
                                 context.bot.send_message(chat_id=update.effective_chat.id,text=f"{resposta}")
-                                context.bot.send_message(chat_id=update.effective_chat.id,text=f"""Deseja encerrar o atendimento?
-10- SIM
-11- NAO""")
+                                if acao == '1':
+                                        context.bot.send_message(chat_id=update.effective_chat.id,text=f"{menu}")
+                                elif acao == '9':
+                                        cursor.execute(f"UPDATE `tbatendimento` SET `situacao` = 'F' WHERE `situacao` = 'A' AND `canal` = '3' AND `numero` = '{numero}'")
+                                        context.bot.send_message(chat_id=update.effective_chat.id,text=f"Atendimento encerrado!")     
+                                        dispatcher.remove_handler(opcoes_handler)
+                                        dispatcher.remove_handler(tente_novamente_handler)
+                                        dispatcher.add_handler(start_handler2)
+                                        banco.commit()
+
                                 return False
+#                                 
+# context.bot.send_message(chat_id=update.effective_chat.id,text=f"""Deseja encerrar o atendimento?
+# 10- SIM
+# 11- NAO""")
                         except:
                                 cursor.execute(f'SELECT departamento FROM tbdepartamentos WHERE id_menu = {msg_recebida}')
                                 resposta = cursor.fetchall()
@@ -318,14 +333,15 @@ updater.start_polling()
 
 # Mandar mensagens enviadas pelo suporte para o user
 while (True):
-        banco = mysql.connector.connect(host='192.168.10.82',database='saw_teste',user='root',password='rapadura')
-        cursor = banco.cursor(buffered=True)
 
+        time.sleep(1)
+        banco = mysql.connector.connect(host='192.168.10.82',database='saw_teste',user='root',password='rapadura')
+        cursor = banco.cursor(buffered=True)    
         # pegando números com situação E
         cursor.execute(f"SELECT numero FROM tbmsgatendimento WHERE situacao='E'")
         numeros123 = cursor.fetchall()
 
-        print(numeros123)
+        # print(numeros123)
 
         # removendo a repetição do mesmo número
         def remove_repetidos(lista):
@@ -352,8 +368,8 @@ while (True):
                 cursor.execute(f"SELECT msg FROM tbmsgatendimento WHERE numero = {i[0]} and situacao = 'E'")
                 msg = cursor.fetchall()
                 
-                print(msg)
-                print(chatid)
+                # print(msg)
+                # print(chatid)
 
                 try:
                         for x in msg:
@@ -361,6 +377,7 @@ while (True):
                                 cursor.execute(f"UPDATE tbmsgatendimento set situacao='N' WHERE situacao='E' AND numero={numeros_com_chatid}")
                                 banco.commit()
                 except:
-                        print('sem chat id')
+                        pass
         except:
-                print('sem mensagens novas para enviar')
+                # print('sem mensagens novas para enviar')
+                pass
