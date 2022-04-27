@@ -1,17 +1,16 @@
 # -*- coding: utf-8 -*-
+from matplotlib import offsetbox
 import telegram
 from telegram.ext import Updater, CallbackContext, CommandHandler, MessageHandler, Filters
 from telegram import Contact, MessageId, Update
 import logging
 import mysql.connector
 import time
-import threading
 
 
 # inicialização e configuração do bot
 updater = Updater(token="5180663220:AAGRZL-gErS01fkfIU0zoRmlCQxaoFLMvV4")
 dispatcher = updater.dispatcher
-
 
 bot = telegram.Bot("5180663220:AAGRZL-gErS01fkfIU0zoRmlCQxaoFLMvV4")
 
@@ -25,6 +24,7 @@ global opcoes_handler
 # opcoes_handler = ''
 
 # responde o command messages /
+
 # solicita contato para o user caso seja a primeira conversa e começa robô
 def start(update: Update, context: CallbackContext):
         dispatcher.remove_handler(start_handler2)
@@ -101,7 +101,6 @@ dispatcher.add_handler(start_handler)
 start_handler2 = MessageHandler(Filters.text, start)
 dispatcher.add_handler(start_handler2)
 
-
 # Recebe o contato do usuário e manda as opções do menu
 def mandar_opcoes(update: Update, context: CallbackContext):
         # atendimento()
@@ -152,13 +151,13 @@ def mandar_opcoes(update: Update, context: CallbackContext):
 
 # Salva as informações no banco de dados
 
-        # busca no banco de dados de usuários
+          # busca no banco de dados de usuários
         busca_numeros = cursor.execute("SELECT * FROM tbcontatos")
         numeros = cursor.fetchall()
         # dispatcher.remove_handler(mandar_opcoes_handler)
         dispatcher.add_handler(opcoes_handler)
         dispatcher.remove_handler(tente_novamente_handler)
-
+       
         # compara o numero atual com os numeros cadastrados no banco de dados
         for i in numeros:
                 if str(i[0])==numero:
@@ -181,8 +180,6 @@ def mandar_opcoes(update: Update, context: CallbackContext):
         banco.commit()
 
 
-
-
 # Resposta das opções do menu
 def opcoes(update: Update, context: CallbackContext):
         global sequencia
@@ -193,10 +190,8 @@ def opcoes(update: Update, context: CallbackContext):
 
         banco = mysql.connector.connect(host='192.168.10.82',database='saw_teste',user='root',password='rapadura')
         cursor = banco.cursor(buffered=True)
-        
-        cursor.execute(f"SELECT msg FROM tbmsgatendimento WHERE situacao = 'E'")
-        msg_banco = cursor.fetchall()
-        print(msg_banco)
+
+
 
         buscar_nome = cursor.execute(f'SELECT nome FROM tbcontatos WHERE chatid = {chat_id}')
         nomes = cursor.fetchall()
@@ -205,8 +200,8 @@ def opcoes(update: Update, context: CallbackContext):
         buscar_numero = cursor.execute(f'SELECT numero FROM tbcontatos WHERE chatid = {chat_id}')
         numeros = cursor.fetchall()
         numero = numeros[0][0]
-
-
+ 
+    
         busca_atendimento = cursor.execute(f"SELECT id FROM tbatendimento WHERE numero = '{numero}' AND canal = 3 AND situacao IN('T', 'A') ")
         atendimentos = cursor.fetchall()
 
@@ -255,6 +250,7 @@ def opcoes(update: Update, context: CallbackContext):
                                 resposta = resposta[0][0]
                                 texto = "Você será redirecionado para o departamento: "
                                 context.bot.send_message(chat_id=update.effective_chat.id,text=f"{texto} {resposta}")
+
                                 return False
 
         if msg_recebida == '10':
@@ -269,31 +265,40 @@ def opcoes(update: Update, context: CallbackContext):
                 context.bot.send_message(chat_id=update.effective_chat.id,text=f"Opção inválida selecione outra opção:\n{menu}")
 
 
+# suporte manda mensagem para o usuario
+def mandar_msg_user():
+        banco = mysql.connector.connect(host='192.168.10.82',database='saw_teste',user='root',password='rapadura')
+        cursor = banco.cursor(buffered=True)
 
-#         if msg_recebida == '1' or msg_recebida=='2' or msg_recebida== '3' or msg_recebida=='4':
-#                 cursor.execute(f'SELECT departamento FROM tbdepartamentos WHERE id = 20')
-#                 resposta = cursor.fetchall()
-#                 resposta = resposta[0][0]
-#                 texto = "Você será redirecionado para o departamento: "
-#                 context.bot.send_message(chat_id=update.effective_chat.id,text=f"{texto} {resposta}")
-#                 context.bot.send_message(chat_id=update.effective_chat.id,text=f"""Deseja encerrar o atendimento?
-# 10- SIM
-# 11- NAO""")
-# Fim verificação mensagem.
+        cursor.execute(f"SELECT numero FROM tbmsgatendimento WHERE situacao = 'E'")
+        numeros1 = cursor.fetchall()
+        print(numeros1)
 
-
+        if numeros1 == []:
+                numeros1 = False
 
 
-        # if update.message.text == '1':
-        #         context.bot.send_message(chat_id=update.effective_chat.id, text='você escolheu a opção 1')
-        # elif update.message.text == '2':
-        #         context.bot.send_photo(chat_id=update.effective_chat.id, photo=open('files/images.jpg', 'rb'))
-        # elif update.message.text == '3':
-        #         context.bot.send_video(chat_id=update.effective_chat.id,video=open('files/realshort.mp4', 'rb'), supports_streaming=True)
-        # elif update.message.text == '4':
-        #         context.bot.send_document(chat_id=update.effective_chat.id, document=open('files/report.pdf', 'rb'))
-        # else:
-        #         context.bot.send_message(chat_id=update.effective_chat.id,text=f"""Opção inválida, tente novamente:\n{menu}""")
+        while numeros1:
+                for num in numeros1:
+                        time.sleep(2)
+                        try:
+                                print('entrou2')
+                                cursor.execute(f"SELECT chatid FROM tbcontatos WHERE numero={num[0]}")
+                                chat_id = cursor.fetchall()
+                                chat_id = chat_id[0][0]
+                                cursor.execute(f"SELECT msg FROM tbmsgatendimento WHERE numero={num[0]} AND situacao = 'E'")
+                                msg_atendimento = cursor.fetchall()
+                                msg_atendimento = msg_atendimento[0][0]
+                                bot.send_message(chat_id=chat_id,text=msg_atendimento)
+
+                                print(num[0])
+                                print(msg_atendimento)
+
+                                cursor.execute(f"UPDATE tbmsgatendimento SET situacao = 'N' WHERE situacao = 'E' AND numero = {num[0]} AND msg = '{msg_atendimento}'")
+                                banco.commit()
+                                print('chegou')
+                        except:
+                                print('alguns não temos chat id')
 
 
 # Caso usuário não envie contato entra nessa função
@@ -302,41 +307,60 @@ def tente_novamente(update: Update, context: CallbackContext):
         Por favor, envie seu contato para continuar. \nCaso estiver usando o telegram web clique no ícone demonstrado a seguir.
         """)
         context.bot.send_photo(chat_id=update.effective_chat.id, photo=open('files/icone_contato.png', 'rb'))
-        
+
 
 tente_novamente_handler = MessageHandler(Filters.text, tente_novamente)
 
 opcoes_handler = MessageHandler(Filters.text, opcoes)
 
-
-        
 updater.start_polling()
 
 
-banco = mysql.connector.connect(host='192.168.10.82',database='saw_teste',user='root',password='rapadura')
-cursor = banco.cursor(buffered=True)
+# Mandar mensagens enviadas pelo suporte para o user
+while (True):
+        banco = mysql.connector.connect(host='192.168.10.82',database='saw_teste',user='root',password='rapadura')
+        cursor = banco.cursor(buffered=True)
 
-cursor.execute(f"SELECT numero FROM tbmsgatendimento WHERE situacao = 'E'")
-numeros1 = cursor.fetchall()
-print(numeros1)
+        # pegando números com situação E
+        cursor.execute(f"SELECT numero FROM tbmsgatendimento WHERE situacao='E'")
+        numeros123 = cursor.fetchall()
+
+        print(numeros123)
+
+        # removendo a repetição do mesmo número
+        def remove_repetidos(lista):
+                l = []
+                for i in lista:
+                        if i not in l:
+                                l.append(i)
+                l.sort()
+                return l
+
+        numeros123 = remove_repetidos(numeros123)
+
+        try:
+                for i in numeros123:
+                        cursor.execute(f"SELECT chatid FROM tbcontatos WHERE numero = {i[0]}")
+                        chatid = cursor.fetchall()
+                        chatid = chatid[0][0]
+
+                        cursor.execute(f"SELECT numero FROM tbcontatos WHERE chatid={chatid}")
+                        numeros_com_chatid = cursor.fetchall()
+                        numeros_com_chatid = numeros_com_chatid[0][0]
 
 
-def envia_msg():
-        while True:
-                # if numeros1 != []:
-                for num in numeros1:
-                        time.sleep(2)
-                        cursor.execute(f"SELECT chatid FROM tbcontatos WHERE numero={num[0]}")
-                        chat_id = cursor.fetchall()
-                        chat_id = chat_id[0][0]
-                        cursor.execute(f"SELECT msg FROM tbmsgatendimento WHERE numero={num[0]} AND situacao = 'E'")
-                        msg_atendimento = cursor.fetchall()
-                        if msg_atendimento != []:
-                                msg_atendimento = msg_atendimento[0][0]
-                                bot.send_message(chat_id=chat_id,text=msg_atendimento)
+                cursor.execute(f"SELECT msg FROM tbmsgatendimento WHERE numero = {i[0]} and situacao = 'E'")
+                msg = cursor.fetchall()
+                
+                print(msg)
+                print(chatid)
 
-
-                        cursor.execute(f"UPDATE tbmsgatendimento SET situacao = 'N' WHERE situacao = 'E' AND numero = {num[0]} AND msg = '{msg_atendimento}'")
-                        print('chegou')
-
-threading.Thread(target=envia_msg).start()
+                try:
+                        for x in msg:
+                                bot.send_message(chat_id=chatid,text=x[0])
+                                cursor.execute(f"UPDATE tbmsgatendimento set situacao='N' WHERE situacao='E' AND numero={numeros_com_chatid}")
+                                banco.commit()
+                except:
+                        print('sem chat id')
+        except:
+                print('sem mensagens novas para enviar')
